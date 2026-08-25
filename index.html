@@ -19,15 +19,11 @@
 
 <!-- ============================================================
      ЭКРАН АВТОРИЗАЦИИ — показывается, пока сервер не подтвердил сессию.
-     Тема экрана — отдельная (localStorage), не из настроек аккаунта.
+     Тема выбирается автоматически по системной (prefers-color-scheme).
+     Палитра экрана независима от настроек аккаунта.
      ============================================================ -->
 <div id="authScreen">
-  <div class="auth-theme" role="group" aria-label="Тема экрана входа">
-    <button type="button" class="auth-theme-btn" data-mode="light" aria-label="Светлая тема">☀ <span>Светлая</span></button>
-    <button type="button" class="auth-theme-btn" data-mode="dark" aria-label="Тёмная тема">🌙 <span>Тёмная</span></button>
-  </div>
-
-  <div class="auth-card">
+  <div class="auth-wrap">
     <div class="auth-brand">
       <div class="auth-brand-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -35,79 +31,84 @@
       <div class="auth-brand-name">NEXUS</div>
     </div>
 
-    <!-- Индикатор автоматической проверки сессии -->
-    <div class="auth-boot" id="authBoot">
-      <span class="spinner"></span> Проверка сессии…
+    <div class="auth-card">
+      <!-- Индикатор автоматической проверки сессии -->
+      <div class="auth-boot" id="authBoot">
+        <span class="spinner"></span> Проверка сессии…
+      </div>
+
+      <!-- ===== ФОРМА ВХОДА ===== -->
+      <form class="auth-pane active" id="loginForm" novalidate>
+        <h1 class="auth-title">Вход в аккаунт</h1>
+        <p class="auth-subtitle">Рады видеть вас снова</p>
+
+        <div class="form-msg success" id="loginSuccess" role="status"></div>
+        <div class="form-msg" id="loginError" role="alert"></div>
+
+        <div class="field">
+          <label class="field-label" for="loginUsername">Имя пользователя</label>
+          <input class="input" id="loginUsername" type="text" placeholder="Ваше имя пользователя" autocomplete="username">
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="loginPassword">Пароль</label>
+          <div class="pass-wrap">
+            <input class="input" id="loginPassword" type="password" placeholder="Ваш пароль" autocomplete="current-password">
+            <button type="button" class="pass-toggle" id="toggleLoginPass" aria-label="Показать или скрыть пароль">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <label class="checkbox-row">
+          <input type="checkbox" id="rememberMe" checked>
+          <span class="checkbox-box"></span>
+          <span>Запомнить меня</span>
+        </label>
+
+        <button class="btn-primary" id="loginBtn" type="submit">Войти</button>
+
+        <p class="auth-switch">Нет аккаунта? <a href="#" id="showRegister">Регистрация аккаунта</a></p>
+      </form>
+
+      <!-- ===== ФОРМА РЕГИСТРАЦИИ ===== -->
+      <form class="auth-pane hidden" id="registerForm" novalidate>
+        <h1 class="auth-title">Создание аккаунта</h1>
+        <p class="auth-subtitle">Пара шагов — и вы с нами</p>
+
+        <div class="form-msg" id="registerError" role="alert"></div>
+
+        <div class="field">
+          <label class="field-label" for="regUsername">Имя пользователя</label>
+          <input class="input" id="regUsername" type="text" placeholder="3–20 символов: латиница, цифры, _" autocomplete="username">
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="regPassword">Пароль</label>
+          <div class="pass-wrap">
+            <input class="input" id="regPassword" type="password" placeholder="Придумайте пароль" autocomplete="new-password">
+            <button type="button" class="pass-toggle" id="toggleRegPass" aria-label="Показать или скрыть пароль">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="regEmail">Email</label>
+          <input class="input" id="regEmail" type="email" placeholder="example@gmail.com" autocomplete="email">
+        </div>
+
+        <button class="btn-primary" id="registerBtn" type="submit">Зарегистрироваться</button>
+
+        <p class="auth-switch">Уже есть аккаунт? <a href="#" id="showLogin">Войти</a></p>
+      </form>
     </div>
 
-    <!-- ===== ФОРМА ВХОДА ===== -->
-    <form class="auth-pane active" id="loginForm" novalidate>
-      <h1 class="auth-title">Вход в аккаунт</h1>
-      <p class="auth-subtitle">Рады видеть вас снова</p>
-
-      <div class="form-msg success" id="loginSuccess" role="status"></div>
-      <div class="form-msg" id="loginError" role="alert"></div>
-
-      <div class="field">
-        <label class="field-label" for="loginUsername">Имя пользователя</label>
-        <input class="input" id="loginUsername" type="text" placeholder="Ваше имя пользователя" autocomplete="username">
-      </div>
-
-      <div class="field">
-        <label class="field-label" for="loginPassword">Пароль</label>
-        <div class="pass-wrap">
-          <input class="input" id="loginPassword" type="password" placeholder="Ваш пароль" autocomplete="current-password">
-          <button type="button" class="pass-toggle" id="toggleLoginPass" aria-label="Показать или скрыть пароль">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
-        </div>
-      </div>
-
-      <label class="checkbox-row">
-        <input type="checkbox" id="rememberMe" checked>
-        <span class="checkbox-box"></span>
-        <span>Запомнить меня</span>
-      </label>
-
-      <button class="btn-primary" id="loginBtn" type="submit">Войти</button>
-
-      <p class="auth-switch">Нет аккаунта? <a href="#" id="showRegister">Регистрация аккаунта</a></p>
-    </form>
-
-    <!-- ===== ФОРМА РЕГИСТРАЦИИ ===== -->
-    <form class="auth-pane hidden" id="registerForm" novalidate>
-      <h1 class="auth-title">Создание аккаунта</h1>
-      <p class="auth-subtitle">Пара шагов — и вы с нами</p>
-
-      <div class="form-msg" id="registerError" role="alert"></div>
-
-      <div class="field">
-        <label class="field-label" for="regUsername">Имя пользователя</label>
-        <input class="input" id="regUsername" type="text" placeholder="3–20 символов: латиница, цифры, _" autocomplete="username">
-      </div>
-
-      <div class="field">
-        <label class="field-label" for="regPassword">Пароль</label>
-        <div class="pass-wrap">
-          <input class="input" id="regPassword" type="password" placeholder="Придумайте пароль" autocomplete="new-password">
-          <button type="button" class="pass-toggle" id="toggleRegPass" aria-label="Показать или скрыть пароль">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          </button>
-        </div>
-      </div>
-
-      <div class="field">
-        <label class="field-label" for="regEmail">Email</label>
-        <input class="input" id="regEmail" type="email" placeholder="example@gmail.com" autocomplete="email">
-      </div>
-
-      <button class="btn-primary" id="registerBtn" type="submit">Зарегистрироваться</button>
-
-      <p class="auth-switch">Уже есть аккаунт? <a href="#" id="showLogin">Войти</a></p>
-    </form>
+    <p class="auth-foot">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Защищённое соединение · пароли хранятся только в виде bcrypt-хеша
+    </p>
   </div>
-
-  <p class="auth-foot">NEXUS Account · пароли хранятся только в виде bcrypt-хеша на сервере</p>
 </div>
 <!-- ============================================================
      HTML — РАЗМЕТКА

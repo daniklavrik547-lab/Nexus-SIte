@@ -5,24 +5,29 @@
      Webflow / страница (интерфейс)
        → Frontend JavaScript (этот файл)
          → API (fetch + httpOnly cookie-сессия)
-           → Backend (server/server.js: bcrypt, сессии)
+           → Backend (server.js: bcrypt, сессии)
              → Database (SQLite)
    Пароли никогда не хранятся и не проверяются на клиенте.
    Все решения об авторизации принимает сервер.
    ============================================================ */
 
-/* ====== КОНФИГУРАЦИЯ: укажите адрес вашего backend ====== */
-/* Локально:        'http://localhost:3000/api'
-   После деплоя на Render: 'https://ваш-сервис.onrender.com/api' */
+/* ====== КОНФИГУРАЦИЯ ====== */
 var NEXUS_CONFIG = {
   API_URL: 'https://nexus-api-ziy0.onrender.com/api'
 };
 
+/* Отладочные логи в консоли браузера (F12). Когда отладка не нужна — false */
+var AUTH_DEBUG = true;
+
+function authLog(){ if(AUTH_DEBUG && window.console) console.log.apply(console, ['[AUTH]'].concat([].slice.call(arguments))); }
+function authErr(){ if(AUTH_DEBUG && window.console) console.error.apply(console, ['[AUTH ERROR]'].concat([].slice.call(arguments))); }
+
 /* ==================== API-КЛИЕНТ ==================== */
 var AuthManager = {
-  /* Единая точка запросов к API. Сессия живёт в httpOnly cookie,
-     поэтому credentials: 'include' обязателен. */
-  request: function(path, options){
+  /* Единая точка запросов. credentials:'include' обязателен:
+     сессия живёт в httpOnly cookie и ходит между сайтами
+     (GitHub Pages → Render) благодаря SameSite=None. */
+  request: function(path, options, _retried){
     options = options || {};
     var fetchOpts = {
       method: options.method || 'GET',
@@ -30,12 +35,23 @@ var AuthManager = {
       headers: { 'Content-Type': 'application/json' }
     };
     if(options.body) fetchOpts.body = JSON.stringify(options.body);
+    authLog((options.method || 'GET') + ' ' + path);
+
     return fetch(NEXUS_CONFIG.API_URL + path, fetchOpts).then(function(r){
+      authLog('Ответ ' + path + ' → HTTP ' + r.status);
       return r.json().catch(function(){ return null; }).then(function(data){
+        if(!r.ok && data && data.error) authErr('Тело ошибки ' + path + ':', JSON.stringify(data));
         return { ok: r.ok, status: r.status, data: data };
       });
-    }).catch(function(){
-      return { ok: false, status: 0, data: null }; /* 0 = сеть/сервер недоступны */
+    }).catch(function(err){
+      /* Статус 0 = сеть / CORS / сервер недоступен (например, холодный старт Render) */
+      if(!_retried){
+        authErr('Соединение не удалось (' + path + '). Повтор через 1.5с…', err && err.message);
+        return new Promise(function(resolve){ setTimeout(resolve, 1500); })
+          .then(function(){ return AuthManager.request(path, options, true); });
+      }
+      authErr('Соединение не удалось (' + path + ').');
+      return { ok: false, status: 0, data: null };
     });
   },
 
@@ -49,46 +65,32 @@ var AuthManager = {
   logout:   function(){ return this.request('/logout', { method:'POST' }); },
 
   saveSettings: function(settings){
-    var self = this;
     return this.request('/settings', { method:'PATCH', body:{ settings:settings } }).then(function(res){
       if(res.status === 401){ App.showAuth('Сессия истекла, войдите снова'); return false; }
+      if(!res.ok) authErr('Не удалось сохранить настройки, HTTP ' + res.status);
       return res.ok;
     });
   }
 };
 
 /* ==================== ТЕМА ЭКРАНА АВТОРИЗАЦИИ ==================== */
-/* Отдельная тема для Login/Register: не берётся из аккаунта,
-   хранится локально и не смешивается с настройками пользователя */
+/* Определяется автоматически по системной теме браузера
+   (prefers-color-scheme). Ручного переключателя нет,
+   localStorage не используется, с аккаунтом не связана. */
 var AuthTheme = {
-  KEY: 'nexus.authTheme',
-  get: function(){
-    try{
-      var v = localStorage.getItem(this.KEY);
-      return (v === 'light' || v === 'dark') ? v : 'dark';
-    }catch(e){ return 'dark'; }
-  },
-  apply: function(){
-    document.documentElement.setAttribute('data-theme', this.get());
-    this.render();
-  },
-  set: function(mode){
-    if(mode !== 'light' && mode !== 'dark') mode = 'dark';
-    try{ localStorage.setItem(this.KEY, mode); }catch(e){}
+  mq: null,
+  init: function(){
+    var self = this;
+    if(!window.matchMedia){ this.apply(); return; }
+    this.mq = window.matchMedia('(prefers-color-scheme: dark)');
+    var handler = function(){ self.apply(); }; /* реакция на смену темы системы */
+    if(this.mq.addEventListener) this.mq.addEventListener('change', handler);
+    else if(this.mq.addListener) this.mq.addListener(handler);
     this.apply();
   },
-  render: function(){
-    var btns = document.querySelectorAll('.auth-theme-btn');
-    for(var i = 0; i < btns.length; i++){
-      btns[i].classList.toggle('active', btns[i].dataset.mode === this.get());
-    }
-  },
-  bind: function(){
-    var self = this;
-    var btns = document.querySelectorAll('.auth-theme-btn');
-    for(var i = 0; i < btns.length; i++){
-      btns[i].addEventListener('click', function(){ self.set(this.dataset.mode); });
-    }
+  isDark: function(){ return this.mq ? this.mq.matches : true; },
+  apply: function(){
+    document.documentElement.setAttribute('data-theme', this.isDark() ? 'dark' : 'light');
   }
 };
 
@@ -114,8 +116,7 @@ var App = {
       regEmail:      document.getElementById('regEmail'),
       regPassword:   document.getElementById('regPassword')
     };
-    AuthTheme.bind();
-    AuthTheme.apply();
+    AuthTheme.init();
     this.bindAuthUI();
     this.bindLogout();
     this.boot();
@@ -126,12 +127,14 @@ var App = {
     var self = this;
     AuthManager.me().then(function(res){
       self.els.authBoot.classList.add('hidden');
+      authLog('Проверка сессии → HTTP ' + res.status);
       if(res.ok && res.data && res.data.user){
-        self.enter(res.data.user);            /* сессия активна -> аккаунт */
+        authLog('Сессия валидна, пользователь: ' + res.data.user.username);
+        self.enter(res.data.user);
       }else if(res.status === 0){
-        self.showAuth('Сервер авторизации недоступен. Запустите backend (см. DEPLOY.md) и обновите страницу.');
+        self.showAuth('Не удалось связаться с сервером авторизации. Проверьте подключение и попробуйте снова.');
       }else{
-        self.showAuth('');                    /* сессии нет -> форма входа */
+        self.showAuth(''); /* сессии нет → форма входа */
       }
     });
   },
@@ -139,6 +142,7 @@ var App = {
   /* --- Вход выполнен: открыть аккаунт --- */
   enter: function(user){
     this.user = user;
+    authLog('Вход выполнен: ' + user.username + ' (id ' + user.id + ')');
     document.body.classList.remove('auth-mode');
     this.els.authScreen.classList.add('hidden');
     this.clearMsg(this.els.loginError);
@@ -154,7 +158,7 @@ var App = {
     document.body.classList.add('auth-mode');
     this.els.authScreen.classList.remove('hidden');
     this.els.authBoot.classList.add('hidden');
-    AuthTheme.apply(); /* экран входа — своя тема, не пользовательская */
+    AuthTheme.apply(); /* тема входа — по системе, не из аккаунта */
     this.switchPane('login');
     this.clearMsg(this.els.loginSuccess);
     if(message) this.showMsg(this.els.loginError, message);
@@ -176,7 +180,7 @@ var App = {
   clearMsg: function(el){ el.textContent = ''; el.classList.remove('visible'); },
   setError: function(el, text){
     this.showMsg(el, text);
-    el.classList.remove('visible'); void el.offsetWidth; el.classList.add('visible'); /* перезапуск shake */
+    el.classList.remove('visible'); void el.offsetWidth; el.classList.add('visible');
   },
 
   /* Состояние загрузки кнопки + защита от повторного нажатия */
@@ -222,6 +226,7 @@ var App = {
       AuthManager.login(u, p, remember).then(function(res){
         self.setLoading(self.els.loginBtn, false);
         if(res.ok && res.data && res.data.user){
+          authLog('Сессия создана');
           self.els.loginPassword.value = '';
           self.enter(res.data.user);
         }else if(res.status === 401){
@@ -230,7 +235,10 @@ var App = {
         }else if(res.status === 429){
           self.setError(self.els.loginError, 'Слишком много попыток. Подождите немного');
         }else if(res.status === 0){
-          self.setError(self.els.loginError, 'Сервер авторизации недоступен');
+          self.setError(self.els.loginError, 'Нет соединения с сервером. Проверьте интернет и попробуйте снова');
+        }else if(res.status >= 500){
+          authErr('Ошибка сервера при входе, HTTP ' + res.status, res.data);
+          self.setError(self.els.loginError, 'Ошибка сервера (' + res.status + '). Попробуйте позже');
         }else{
           self.setError(self.els.loginError, 'Не удалось выполнить вход. Попробуйте ещё раз');
         }
@@ -262,7 +270,7 @@ var App = {
       AuthManager.register(u, m, p).then(function(res){
         self.setLoading(self.els.registerBtn, false);
         if(res.status === 0){
-          self.setError(self.els.registerError, 'Сервер авторизации недоступен');
+          self.setError(self.els.registerError, 'Нет соединения с сервером. Проверьте интернет и попробуйте снова');
           return;
         }
         if(res.ok && res.data && res.data.user){
@@ -303,7 +311,8 @@ var App = {
     var btns = document.querySelectorAll('.js-logout');
     for(var i = 0; i < btns.length; i++){
       btns[i].addEventListener('click', function(){
-        AuthManager.logout().then(function(){
+        AuthManager.logout().then(function(res){
+          authLog('Выход → HTTP ' + res.status + (res.ok ? ', сессия уничтожена' : ''));
           StorageManager.clear();
           App.showAuth('Вы вышли из аккаунта');
           UIManager.toast('Вы вышли из аккаунта');

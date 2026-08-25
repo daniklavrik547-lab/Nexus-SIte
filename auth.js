@@ -15,7 +15,7 @@
 /* Локально:        'http://localhost:3000/api'
    После деплоя на Render: 'https://ваш-сервис.onrender.com/api' */
 var NEXUS_CONFIG = {
-  API_URL: 'http://localhost:3000/api'
+  API_URL: 'https://nexus-api-ziy0.onrender.com/api'
 };
 
 /* ==================== API-КЛИЕНТ ==================== */

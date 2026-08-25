@@ -1,0 +1,20 @@
+{
+  "name": "nexus-api",
+  "version": "1.0.0",
+  "description": "NEXUS auth backend: регистрация, вход, серверные сессии (Express + SQLite + bcrypt)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.10.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0"
+  }
+}

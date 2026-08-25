@@ -1,0 +1,583 @@
+-> Head-код, разметку <body> ->
+     HTML Embed, <script> -> перед </body> (Footer-код).
+     ============================================================ -->
+
+<style>
+/* ==========================================================
+   1. ДИЗАЙН-ТОКЕНЫ (единая система CSS-переменных)
+   ========================================================== */
+:root{
+  /* Акцентная система — перезаписывается из JS (палитра) */
+  --accent:#00e5ff;
+  --accent-rgb:0,229,255;
+  --accent-glow:0 0 24px rgba(var(--accent-rgb),.35);
+  --grad-a:#00e5ff;
+  --grad-b:#7a5cff;
+
+  /* Поверхности — Dark (по умолчанию) */
+  --bg:#050609;
+  --sidebar:#101319;
+  --card:#0c0f15;
+  --card-2:#0f131b;
+  --input:#090c11;
+  --border:rgba(255,255,255,.07);
+  --border-2:rgba(255,255,255,.14);
+  --text:#f2f5f9;
+  --text-2:#9aa3b2;
+  --text-3:#5f6875;
+  --ok:#2ee66b;
+  --card-shadow:0 8px 26px rgba(0,0,0,.35);
+  --pop:rgba(255,255,255,.045);
+
+  --r-lg:20px;
+  --sidebar-w:256px;
+  --ease:cubic-bezier(.4,0,.2,1);
+  --emoji-font:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;
+}
+
+/* ==========================================================
+   2. ТЕМЫ: Light / Dark / Custom
+   ========================================================== */
+[data-theme="light"]{
+  --bg:#eef1f6;
+  --sidebar:#ffffff;
+  --card:#ffffff;
+  --card-2:#f5f7fb;
+  --input:#f1f4f8;
+  --border:rgba(13,20,32,.10);
+  --border-2:rgba(13,20,32,.18);
+  --text:#0e1420;
+  --text-2:#4d5866;
+  --text-3:#8b95a5;
+  --card-shadow:0 10px 30px rgba(15,25,45,.08);
+  --pop:rgba(13,20,32,.05);
+}
+/* Своя тема: тёмная база, окрашенная выбранным акцентом */
+[data-theme="custom"]{
+  --bg:#04060a;
+  --sidebar:#0a0e15;
+  --card:#080c12;
+  --card-2:#0b1018;
+  --input:#06090e;
+  --border:rgba(var(--accent-rgb),.16);
+  --border-2:rgba(var(--accent-rgb),.34);
+  --card-shadow:0 10px 30px rgba(0,0,0,.5);
+  --pop:rgba(var(--accent-rgb),.07);
+}
+
+/* ==========================================================
+   3. БАЗА
+   ========================================================== */
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'Inter','SF Pro Display','Segoe UI',system-ui,-apple-system,Roboto,'Helvetica Neue',Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  transition:background-color .3s var(--ease),color .3s var(--ease);
+  overflow-x:hidden;
+}
+/* Мягкое акцентное свечение фона */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(1000px 560px at 85% -12%, rgba(var(--accent-rgb),.09), transparent 62%),
+    radial-gradient(820px 520px at -12% 112%, rgba(var(--accent-rgb),.06), transparent 62%);
+  opacity:.8;transition:opacity .3s;
+}
+[data-theme="custom"] body::before{opacity:1}
+button{font-family:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input{font-family:inherit}
+a{text-decoration:none;color:inherit}
+:focus-visible{outline:2px solid rgba(var(--accent-rgb),.7);outline-offset:2px;border-radius:6px}
+::selection{background:rgba(var(--accent-rgb),.35)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(var(--accent-rgb),.18);border-radius:8px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:rgba(var(--accent-rgb),.35)}
+
+/* ==========================================================
+   4. КАРКАС: SIDEBAR + MAIN
+   ========================================================== */
+.app{display:grid;grid-template-columns:var(--sidebar-w) 1fr;min-height:100vh;position:relative;z-index:1}
+
+.sidebar{
+  position:sticky;top:0;height:100vh;
+  display:flex;flex-direction:column;
+  padding:28px 18px 18px;
+  background:var(--sidebar);
+  border-right:1px solid var(--border);
+  transition:background-color .3s var(--ease),border-color .3s var(--ease);
+}
+.logo{
+  font-size:21px;font-weight:900;letter-spacing:.22em;
+  color:var(--text);margin:2px 8px 36px;white-space:nowrap;
+  text-shadow:0 0 26px rgba(var(--accent-rgb),.35);
+}
+.logo .logo-short{display:none}
+.menu{display:flex;flex-direction:column;gap:6px}
+.menu-item{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 14px;border-radius:12px;
+  border:1px solid transparent;
+  color:var(--text-2);font-size:13px;font-weight:700;
+  letter-spacing:.09em;text-transform:uppercase;
+  transition:all .22s var(--ease);cursor:pointer;white-space:nowrap;
+}
+.menu-item svg{width:19px;height:19px;flex:none}
+.menu-item:hover{color:var(--text);background:var(--pop);transform:translateX(2px)}
+.menu-item.active{
+  color:var(--accent);
+  border-color:rgba(var(--accent-rgb),.55);
+  background:rgba(var(--accent-rgb),.09);
+  box-shadow:0 0 22px rgba(var(--accent-rgb),.20),inset 0 0 14px rgba(var(--accent-rgb),.06);
+  text-shadow:0 0 14px rgba(var(--accent-rgb),.55);
+}
+
+/* Карточка профиля внизу sidebar */
+.profile-card{
+  margin-top:auto;display:flex;align-items:center;gap:12px;
+  padding:12px;border-radius:16px;
+  background:var(--card);border:1px solid var(--border);
+  box-shadow:var(--card-shadow);
+  transition:all .25s var(--ease);
+}
+.profile-card:hover{border-color:rgba(var(--accent-rgb),.4);transform:translateY(-2px)}
+.profile-avatar{
+  width:42px;height:42px;border-radius:50%;flex:none;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;font-family:var(--emoji-font);
+  background:var(--card-2);
+  border:1.5px solid rgba(var(--accent-rgb),.55);
+  box-shadow:0 0 14px rgba(var(--accent-rgb),.25);
+}
+.profile-name{font-size:14px;font-weight:700;color:var(--text);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.profile-status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-3);margin-top:3px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);animation:pulse 2.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+
+.main{min-width:0;padding:40px 44px 90px}
+.content{max-width:1160px;margin:0 auto}
+.page-head h1{font-size:34px;font-weight:800;letter-spacing:.02em}
+.page-head p{color:var(--text-2);font-size:14.5px;margin-top:8px}
+
+/* ==========================================================
+   5. КОЛОНКИ, СЕКЦИИ И КАРТОЧКИ
+   ========================================================== */
+.columns{display:grid;grid-template-columns:1.02fr .98fr;gap:30px;align-items:start;margin-top:34px}
+.col{display:flex;flex-direction:column;gap:18px;min-width:0}
+
+.section-label{
+  display:flex;align-items:center;gap:10px;
+  font-size:12.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);text-shadow:0 0 16px rgba(var(--accent-rgb),.45);
+  margin:4px 2px 2px;
+}
+.section-label .bar{width:4px;height:18px;border-radius:4px;flex:none;background:var(--accent);box-shadow:0 0 14px rgba(var(--accent-rgb),.8)}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  padding:26px;
+  box-shadow:var(--card-shadow);
+  transition:transform .25s var(--ease),border-color .25s var(--ease),box-shadow .25s var(--ease),background-color .3s var(--ease);
+}
+.card:hover{border-color:var(--border-2);transform:translateY(-2px)}
+.card-title{font-size:15.5px;font-weight:700;color:var(--text)}
+.hint{font-size:12.5px;line-height:1.55;color:var(--text-3);margin-top:10px}
+
+.field-label{
+  display:block;font-size:13.5px;font-weight:700;
+  color:var(--accent);text-shadow:0 0 14px rgba(var(--accent-rgb),.4);
+  margin-bottom:10px;
+}
+
+/* ==========================================================
+   6. АВАТАР
+   ========================================================== */
+.avatar-card{display:flex;flex-direction:column;align-items:center;text-align:center}
+.avatar-frame{
+  width:118px;height:118px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:58px;font-family:var(--emoji-font);line-height:1;
+  background:radial-gradient(circle at 30% 25%, rgba(var(--accent-rgb),.18), transparent 62%),var(--card-2);
+  border:2px solid rgba(var(--accent-rgb),.55);
+  box-shadow:0 0 0 5px rgba(var(--accent-rgb),.08),var(--accent-glow);
+  transition:all .25s var(--ease);
+  user-select:none;
+}
+.avatar-frame:hover{transform:scale(1.03);box-shadow:0 0 0 6px rgba(var(--accent-rgb),.14),0 0 44px rgba(var(--accent-rgb),.4)}
+.btn-reset{
+  margin-top:16px;padding:9px 18px;border-radius:999px;
+  border:1px solid var(--border-2);background:var(--input);
+  color:var(--text-2);font-size:13px;font-weight:600;
+  transition:all .22s var(--ease);
+}
+.btn-reset:hover{color:var(--accent);border-color:rgba(var(--accent-rgb),.5);box-shadow:0 0 16px rgba(var(--accent-rgb),.2);transform:translateY(-1px)}
+.btn-reset:active{transform:scale(.96)}
+
+.emoji-picker{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:18px}
+.emoji-btn{
+  width:46px;height:46px;border-radius:13px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;font-family:var(--emoji-font);line-height:1;
+  background:var(--input);border:1px solid var(--border);
+  transition:all .2s var(--ease);
+}
+.emoji-btn:hover{transform:translateY(-3px);border-color:rgba(var(--accent-rgb),.55);box-shadow:0 8px 20px rgba(0,0,0,.35),0 0 16px rgba(var(--accent-rgb),.28)}
+.emoji-btn.selected{border-color:var(--accent);background:rgba(var(--accent-rgb),.13);box-shadow:0 0 16px rgba(var(--accent-rgb),.35)}
+.emoji-btn:active{transform:translateY(-1px) scale(.95)}
+
+/* ==========================================================
+   7. ИНПУТЫ (focus: подсветка границы + мягкое свечение)
+   ========================================================== */
+.input{
+  width:100%;padding:13px 16px;
+  border-radius:12px;border:1px solid var(--border-2);
+  background:var(--input);color:var(--text);
+  font-size:14.5px;outline:none;
+  transition:border-color .22s var(--ease),box-shadow .22s var(--ease),background-color .22s var(--ease);
+}
+.input::placeholder{color:var(--text-3)}
+.input:hover{border-color:rgba(var(--accent-rgb),.35)}
+.input:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(var(--accent-rgb),.15),0 0 20px rgba(var(--accent-rgb),.20);
+  background:var(--card-2);
+}
+
+/* ==========================================================
+   8. ПАЛИТРА АКЦЕНТА
+   ========================================================== */
+.swatches{display:flex;flex-wrap:wrap;gap:14px;margin-top:4px}
+.swatch{
+  width:36px;height:36px;border-radius:50%;
+  background:var(--sw);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 2px 6px rgba(0,0,0,.3);
+  transition:transform .18s var(--ease),box-shadow .18s var(--ease);
+}
+.swatch:hover{transform:scale(1.16)}
+.swatch:active{transform:scale(1.02)}
+.swatch.selected{
+  transform:scale(1.1);
+  box-shadow:0 0 0 3px var(--card),0 0 0 5px var(--sw),0 0 20px var(--sw);
+}
+
+/* ==========================================================
+   9. ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ
+   ========================================================== */
+.segmented{
+  display:flex;gap:4px;padding:4px;
+  background:var(--input);border:1px solid var(--border);border-radius:14px;
+}
+.segmented button{
+  flex:1;padding:11px 8px;border-radius:10px;
+  border:1px solid transparent;
+  color:var(--text-2);font-size:13.5px;font-weight:700;white-space:nowrap;
+  transition:all .22s var(--ease);
+}
+.segmented button:hover{color:var(--text);background:var(--pop)}
+.segmented button.active{
+  color:var(--accent);
+  background:rgba(var(--accent-rgb),.13);
+  border-color:rgba(var(--accent-rgb),.5);
+  box-shadow:0 0 18px rgba(var(--accent-rgb),.22);
+  text-shadow:0 0 12px rgba(var(--accent-rgb),.5);
+}
+.segmented button.locked{opacity:.35;filter:saturate(.4)}
+.segmented button.locked:hover{color:var(--text-2);background:transparent}
+
+/* ==========================================================
+   10. КНОПКИ
+   ========================================================== */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  width:100%;padding:13px 18px;border-radius:12px;
+  font-size:13.5px;font-weight:700;letter-spacing:.02em;
+  transition:all .22s var(--ease);
+}
+.btn:active{transform:scale(.98)}
+.btn-accent{
+  background:linear-gradient(92deg,var(--grad-a),var(--grad-b));
+  color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.22);
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:0 8px 26px rgba(var(--accent-rgb),.30),0 2px 8px rgba(0,0,0,.3);
+}
+.btn-accent:hover{transform:translateY(-2px);filter:saturate(1.15) brightness(1.07);box-shadow:0 12px 34px rgba(var(--accent-rgb),.45),0 4px 12px rgba(0,0,0,.35)}
+.btn-ghost-accent{border:1px solid rgba(var(--accent-rgb),.45);color:var(--accent);background:transparent}
+.btn-ghost-accent:hover{background:rgba(var(--accent-rgb),.10);box-shadow:0 0 18px rgba(var(--accent-rgb),.2);transform:translateY(-1px)}
+
+/* Кнопка "Сохранить изменения" */
+.btn-save{
+  display:flex;align-items:center;justify-content:center;gap:11px;
+  width:100%;padding:18px 20px;margin-top:4px;
+  border-radius:16px;border:1px solid rgba(255,255,255,.18);
+  background:linear-gradient(92deg,var(--grad-a),var(--grad-b));
+  color:#fff;font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  text-shadow:0 1px 8px rgba(0,0,0,.22);
+  box-shadow:0 10px 32px rgba(var(--accent-rgb),.32),0 3px 10px rgba(0,0,0,.3);
+  transition:all .22s var(--ease);
+}
+.btn-save:hover{transform:translateY(-2px);filter:saturate(1.15) brightness(1.06);box-shadow:0 16px 42px rgba(var(--accent-rgb),.48),0 6px 14px rgba(0,0,0,.35)}
+.btn-save:active{transform:translateY(0) scale(.985);box-shadow:0 6px 20px rgba(var(--accent-rgb),.35)}
+.btn-save.saved{animation:savePulse .5s var(--ease)}
+@keyframes savePulse{0%{box-shadow:0 0 0 0 rgba(var(--accent-rgb),.55)}100%{box-shadow:0 0 0 18px rgba(var(--accent-rgb),0)}}
+
+/* ==========================================================
+   11. КАРТОЧКА РАСШИРЕНИЯ
+   ========================================================== */
+.ext-card{background:linear-gradient(180deg,rgba(var(--accent-rgb),.06),transparent 55%),var(--card)}
+.ext-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:18px}
+.ext-icon{
+  width:46px;height:46px;flex:none;border-radius:13px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(var(--accent-rgb),.12);
+  border:1px solid rgba(var(--accent-rgb),.4);
+  box-shadow:0 0 18px rgba(var(--accent-rgb),.22),inset 0 0 10px rgba(var(--accent-rgb),.08);
+}
+.ext-icon svg{width:22px;height:22px;color:var(--accent);filter:drop-shadow(0 0 6px rgba(var(--accent-rgb),.6))}
+.ext-head .hint{margin-top:4px}
+.ext-head > div:last-child{min-width:0}
+
+/* ==========================================================
+   12. ФОРМА ПАРОЛЯ
+   ========================================================== */
+.field-stack{display:flex;flex-direction:column;gap:14px;margin-top:4px}
+#passwordForm .btn{margin-top:16px}
+
+/* ==========================================================
+   13. TOAST-УВЕДОМЛЕНИЕ
+   ========================================================== */
+.toast{
+  position:fixed;left:50%;bottom:34px;z-index:100;
+  transform:translate(-50%,18px);opacity:0;pointer-events:none;
+  display:flex;align-items:center;gap:10px;
+  padding:13px 24px;border-radius:14px;
+  background:var(--card);
+  border:1px solid rgba(var(--accent-rgb),.55);
+  box-shadow:0 14px 44px rgba(0,0,0,.5),0 0 26px rgba(var(--accent-rgb),.25);
+  font-size:14px;font-weight:600;color:var(--text);
+  max-width:calc(100vw - 40px);
+  transition:transform .3s cubic-bezier(.34,1.3,.5,1),opacity .3s var(--ease);
+}
+.toast.show{transform:translate(-50%,0);opacity:1}
+
+/* ==========================================================
+   14. ПОЯВЛЕНИЕ КАРТОЧЕК ПРИ ЗАГРУЗКЕ
+   ========================================================== */
+.section-label,.card,.btn-save{animation:rise .5s var(--ease) both}
+.col:nth-child(1) .card:nth-child(2){animation-delay:.05s}
+.col:nth-child(1) .card:nth-child(3){animation-delay:.1s}
+.col:nth-child(1) .card:nth-child(4){animation-delay:.15s}
+.col:nth-child(2) .card:nth-child(2){animation-delay:.05s}
+.col:nth-child(2) .card:nth-child(3){animation-delay:.1s}
+.col:nth-child(2) .btn-save{animation-delay:.15s}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* ==========================================================
+   15. АДАПТИВНОСТЬ
+   ========================================================== */
+@media (max-width:1080px){
+  .columns{grid-template-columns:1fr} /* колонки -> одна вертикальная */
+}
+@media (max-width:920px){
+  /* Sidebar становится компактным (иконки) */
+  .app{grid-template-columns:78px 1fr}
+  .sidebar{padding:20px 10px 14px;align-items:center}
+  .logo{margin:0 0 28px;font-size:15px;letter-spacing:.05em}
+  .logo .logo-full{display:none}
+  .logo .logo-short{display:inline}
+  .menu{width:100%}
+  .menu-item{justify-content:center;padding:12px 0}
+  .menu-item span{display:none}
+  .profile-card{justify-content:center;padding:8px}
+  .profile-meta{display:none}
+  .main{padding:30px 26px 80px}
+}
+@media (max-width:620px){
+  /* Sidebar превращается в мобильную верхнюю навигацию */
+  .app{display:block}
+  .sidebar{
+    position:sticky;top:0;z-index:50;height:auto;
+    flex-direction:row;align-items:center;gap:6px;
+    width:100%;padding:10px 14px;
+    border-right:0;border-bottom:1px solid var(--border);
+  }
+  .logo{margin:0 10px 0 0}
+  .menu{flex-direction:row;flex:1;overflow-x:auto;gap:2px;scrollbar-width:none}
+  .menu::-webkit-scrollbar{display:none}
+  .menu-item{padding:10px}
+  .profile-card{display:none}
+  .main{padding:24px 16px 90px}
+  .page-head h1{font-size:26px}
+  .card{padding:20px}
+  .input{font-size:16px} /* защита от авто-зума iOS */
+  .avatar-frame{width:104px;height:104px;font-size:50px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+
+/* ==========================================================
+   16. ЭКРАН АВТОРИЗАЦИИ
+   ========================================================== */
+:root{--card-glass:rgba(12,15,21,.86)}
+[data-theme="light"]{--card-glass:rgba(255,255,255,.92)}
+[data-theme="custom"]{--card-glass:rgba(8,12,18,.88)}
+
+/* Приложение скрыто, пока сессия не подтверждена сервером */
+body.auth-mode #appRoot{display:none}
+
+#authScreen{
+  position:fixed;inset:0;z-index:200;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px;background:var(--bg);overflow:hidden;
+  transition:background-color .3s var(--ease);
+}
+#authScreen.hidden{display:none}
+
+/* Декоративные светящиеся сферы на фоне */
+.auth-orb{position:absolute;border-radius:50%;filter:blur(90px);pointer-events:none;animation:orbFloat 16s ease-in-out infinite}
+.orb-1{width:440px;height:440px;background:rgba(var(--accent-rgb),.42);top:-150px;right:-130px}
+.orb-2{width:380px;height:380px;background:rgba(var(--accent-rgb),.26);bottom:-140px;left:-120px;animation-delay:-6s}
+.orb-3{width:280px;height:280px;background:rgba(122,92,255,.22);top:38%;left:8%;animation-delay:-11s}
+@keyframes orbFloat{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-36px,28px) scale(1.1)}}
+
+.auth-card{
+  position:relative;z-index:1;width:100%;max-width:412px;
+  padding:34px 32px 28px;
+  background:var(--card-glass);
+  border:1px solid var(--border-2);
+  border-radius:24px;
+  box-shadow:0 30px 80px rgba(0,0,0,.55),0 0 60px rgba(var(--accent-rgb),.10),inset 0 1px 0 rgba(255,255,255,.06);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  animation:rise .5s var(--ease) both;
+}
+.auth-logo{
+  font-size:25px;font-weight:900;letter-spacing:.26em;text-align:center;color:var(--text);
+  text-shadow:0 0 28px rgba(var(--accent-rgb),.45);
+}
+.auth-sub{text-align:center;font-size:12px;color:var(--text-3);letter-spacing:.16em;text-transform:uppercase;margin-top:6px}
+
+/* Индикатор проверки сессии при загрузке */
+.auth-boot{display:flex;align-items:center;justify-content:center;gap:10px;padding:36px 0 22px;color:var(--text-2);font-size:14px}
+.auth-boot.hidden{display:none}
+.spinner{
+  width:16px;height:16px;border-radius:50%;flex:none;
+  border:2px solid rgba(var(--accent-rgb),.25);border-top-color:var(--accent);
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Переключение Вход <-> Регистрация без перезагрузки */
+.auth-pane{display:none}
+.auth-pane.active{display:block;animation:paneIn .28s var(--ease)}
+.auth-pane.hidden{display:none}
+@keyframes paneIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.auth-title{font-size:22px;font-weight:800;text-align:center}
+.auth-hint{text-align:center;font-size:13px;color:var(--text-2);margin:6px 0 2px}
+.auth-pane .field-label{margin:16px 2px 8px}
+
+/* Сообщения форм (ошибки / успех) — вместо alert() */
+.form-msg{
+  display:none;margin:16px 0 0;padding:11px 14px;border-radius:12px;
+  font-size:13px;font-weight:600;line-height:1.45;
+  background:rgba(255,70,90,.10);border:1px solid rgba(255,80,95,.38);color:#ff93a3;
+}
+[data-theme="light"] .form-msg{background:rgba(255,70,90,.08);color:#c2273d}
+.form-msg.success{background:rgba(46,230,107,.09);border-color:rgba(46,230,107,.38);color:#7df0ae}
+[data-theme="light"] .form-msg.success{background:rgba(46,230,107,.08);color:#0d8a44}
+.form-msg.visible{display:block;animation:shake .4s var(--ease)}
+@keyframes shake{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(2px)}30%,50%,70%{transform:translateX(-3px)}40%,60%{transform:translateX(3px)}}
+
+/* Пароль с кнопкой-глазком */
+.pass-wrap{position:relative}
+.pass-wrap .input{padding-right:48px}
+.pass-toggle{
+  position:absolute;right:7px;top:50%;transform:translateY(-50%);
+  width:34px;height:34px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text-3);transition:all .2s var(--ease);
+}
+.pass-toggle svg{width:17px;height:17px}
+.pass-toggle:hover{color:var(--accent);background:rgba(var(--accent-rgb),.08)}
+.pass-toggle.active{color:var(--accent)}
+
+/* Чекбокс «Запомнить меня» */
+.checkbox-row{
+  display:flex;align-items:center;gap:10px;
+  margin:18px 2px 20px;cursor:pointer;
+  font-size:13.5px;font-weight:600;color:var(--text-2);user-select:none;
+}
+.checkbox-row input{position:absolute;opacity:0;width:0;height:0}
+.checkbox-box{
+  width:19px;height:19px;border-radius:6px;flex:none;position:relative;
+  border:1.5px solid var(--border-2);background:var(--input);
+  transition:all .2s var(--ease);
+}
+.checkbox-row:hover .checkbox-box{border-color:rgba(var(--accent-rgb),.5)}
+.checkbox-row input:checked + .checkbox-box{
+  background:var(--accent);border-color:var(--accent);
+  box-shadow:0 0 12px rgba(var(--accent-rgb),.45);
+}
+.checkbox-box::after{
+  content:'';position:absolute;left:5.5px;top:2px;width:4px;height:9px;
+  border:solid #05131b;border-width:0 2px 2px 0;transform:rotate(45deg);opacity:0;
+  transition:opacity .15s;
+}
+.checkbox-row input:checked + .checkbox-box::after{opacity:1}
+.checkbox-row input:focus-visible + .checkbox-box{outline:2px solid rgba(var(--accent-rgb),.7);outline-offset:2px}
+
+/* Основная кнопка форм */
+.btn-primary{
+  width:100%;padding:14px;border-radius:13px;
+  border:1px solid rgba(255,255,255,.18);
+  background:linear-gradient(92deg,var(--grad-a),var(--grad-b));
+  color:#fff;font-size:14.5px;font-weight:800;letter-spacing:.04em;
+  text-shadow:0 1px 8px rgba(0,0,0,.22);
+  box-shadow:0 8px 26px rgba(var(--accent-rgb),.32),0 2px 8px rgba(0,0,0,.3);
+  transition:all .22s var(--ease);
+}
+.btn-primary:hover:not(:disabled){transform:translateY(-2px);filter:saturate(1.12) brightness(1.06);box-shadow:0 12px 34px rgba(var(--accent-rgb),.45),0 4px 12px rgba(0,0,0,.35)}
+.btn-primary:active:not(:disabled){transform:scale(.985)}
+.btn-primary:disabled{opacity:.65;cursor:default}
+
+.auth-switch{text-align:center;margin-top:20px;font-size:13.5px;color:var(--text-2)}
+.auth-switch a{
+  color:var(--accent);font-weight:700;cursor:pointer;
+  text-shadow:0 0 12px rgba(var(--accent-rgb),.4);
+  transition:all .2s;
+}
+.auth-switch a:hover{text-decoration:underline;text-shadow:0 0 18px rgba(var(--accent-rgb),.7)}
+.auth-foot{margin-top:26px;font-size:12px;color:var(--text-3);text-align:center;position:relative;z-index:1}
+
+@media (max-width:480px){
+  .auth-card{padding:26px 20px 22px;border-radius:20px}
+  .auth-orb{filter:blur(70px)}
+}
+
+/* ==========================================================
+   17. КНОПКА ВЫХОДА ИЗ АККАУНТА
+   ========================================================== */
+.profile-logout{
+  margin-top:8px;align-self:flex-start;
+  padding:5px 11px;border-radius:8px;
+  border:1px solid var(--border);
+  font-size:11.5px;font-weight:700;color:var(--text-3);
+  transition:all .2s var(--ease);
+}
+.profile-logout:hover{color:#ff7a8a;border-color:rgba(255,100,115,.45);background:rgba(255,90,110,.07)}
+.sidebar-logout{
+  display:none;margin-left:auto;
+  width:36px;height:36px;border-radius:10px;flex:none;
+  align-items:center;justify-content:center;
+  border:1px solid var(--border);color:var(--text-2);
+  transition:all .2s var(--ease);
+}
+.sidebar-logout svg{width:17px;height:17px}
+.sidebar-logout:hover{color:#ff7a8a;border-color:rgba(255,100,115,.45)}
+@media (max-width:620px){
+  .sidebar-logout{display:flex}
+}

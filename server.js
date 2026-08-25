@@ -117,14 +117,21 @@ function publicUser(row) {
 function setSessionCookie(res, token, remember) {
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,          /* cookie недоступна из JS — защита от кражи */
-    sameSite: 'lax',         /* защита от CSRF */
     secure: IS_PROD,         /* только HTTPS в продакшене */
+    /* SameSite=None: сайт (GitHub Pages) и API (Render) — разные сайты.
+       Lax не отправлял cookie в cross-site fetch — сессия «сразу истекала».
+       SameSite=None работает только вместе с Secure. */
+    sameSite: IS_PROD ? 'none' : 'lax',
     ...(remember ? { maxAge: REMEMBER_MS } : {})   /* без maxAge сессия умирает с браузером */
   });
 }
 
 function clearSessionCookie(res) {
-  res.clearCookie(COOKIE_NAME, { httpOnly: true, sameSite: 'lax', secure: IS_PROD });
+  res.clearCookie(COOKIE_NAME, {
+    httpOnly: true,
+    secure: IS_PROD,
+    sameSite: IS_PROD ? 'none' : 'lax'
+  });
 }
 
 function createSession(res, userId, remember) {

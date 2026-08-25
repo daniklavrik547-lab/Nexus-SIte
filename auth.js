@@ -15,7 +15,7 @@
 /* Локально:        'http://localhost:3000/api'
    После деплоя на Render: 'https://ваш-сервис.onrender.com/api' */
 var NEXUS_CONFIG = {
-  API_URL: 'https://nexus-api-ziy0.onrender.com/api'
+  API_URL: 'http://localhost:3000/api'
 };
 
 /* ==================== API-КЛИЕНТ ==================== */
@@ -57,6 +57,41 @@ var AuthManager = {
   }
 };
 
+/* ==================== ТЕМА ЭКРАНА АВТОРИЗАЦИИ ==================== */
+/* Отдельная тема для Login/Register: не берётся из аккаунта,
+   хранится локально и не смешивается с настройками пользователя */
+var AuthTheme = {
+  KEY: 'nexus.authTheme',
+  get: function(){
+    try{
+      var v = localStorage.getItem(this.KEY);
+      return (v === 'light' || v === 'dark') ? v : 'dark';
+    }catch(e){ return 'dark'; }
+  },
+  apply: function(){
+    document.documentElement.setAttribute('data-theme', this.get());
+    this.render();
+  },
+  set: function(mode){
+    if(mode !== 'light' && mode !== 'dark') mode = 'dark';
+    try{ localStorage.setItem(this.KEY, mode); }catch(e){}
+    this.apply();
+  },
+  render: function(){
+    var btns = document.querySelectorAll('.auth-theme-btn');
+    for(var i = 0; i < btns.length; i++){
+      btns[i].classList.toggle('active', btns[i].dataset.mode === this.get());
+    }
+  },
+  bind: function(){
+    var self = this;
+    var btns = document.querySelectorAll('.auth-theme-btn');
+    for(var i = 0; i < btns.length; i++){
+      btns[i].addEventListener('click', function(){ self.set(this.dataset.mode); });
+    }
+  }
+};
+
 /* ==================== КОНТРОЛЛЕР ПРИЛОЖЕНИЯ ==================== */
 var App = {
   user: null,
@@ -79,6 +114,8 @@ var App = {
       regEmail:      document.getElementById('regEmail'),
       regPassword:   document.getElementById('regPassword')
     };
+    AuthTheme.bind();
+    AuthTheme.apply();
     this.bindAuthUI();
     this.bindLogout();
     this.boot();
@@ -117,6 +154,7 @@ var App = {
     document.body.classList.add('auth-mode');
     this.els.authScreen.classList.remove('hidden');
     this.els.authBoot.classList.add('hidden');
+    AuthTheme.apply(); /* экран входа — своя тема, не пользовательская */
     this.switchPane('login');
     this.clearMsg(this.els.loginSuccess);
     if(message) this.showMsg(this.els.loginError, message);
